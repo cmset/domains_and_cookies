@@ -22,8 +22,8 @@ Ouvrir un navigateur et aller à l'adresse http://localhost:8000
 
 Autre option, lancer le simulateur avec docker
 ```bash
-docker build -t simulateur-cnil .
-docker run -p 8000:8000 simulateur-cnil
+docker build -t domains-and-cookies .
+docker run -p 8000:8000 domains-and-cookies
 ```
 
 
