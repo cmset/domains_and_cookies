@@ -1,4 +1,4 @@
-#Extracteur de domaines et cookies
+# Extracteur de domaines et cookies
 Cet outil capture les domaines appelés et les cookies déposés par une page web à partir de son URL.
 La capture s'effectue sans demande de consentement.
 
