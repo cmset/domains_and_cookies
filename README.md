@@ -1,6 +1,6 @@
-#Simulateur de contrôle CNIL
-
-Utilisation du simulateur de contrôle CNIL
+#Extracteur de domaines et cookies
+Cet outil capture les domaines appelés et les cookies déposés par une page web à partir de son URL.
+La capture s'effectue sans demande de consentement.
 
 Créer un environnement virtuel
 ```bash
