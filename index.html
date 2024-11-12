@@ -9,67 +9,127 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
-    <div id="app" class="container mx-auto p-8">
-        <h1 class="text-3xl font-bold text-center mb-8">Analyseur de noms de domaines</h1>
-        <p class="text-center mb-3">Cet outil capture les domaines appelés et les cookies déposés par une page web à partir de son URL.</p>
-        <p class="text-center mb-3">La capture s'effectue sans demande de consentement.</p>
-        <form @submit.prevent="analyzeUrl" class="bg-white p-6 rounded-lg shadow-md">
-            <div class="mb-4">
-                <label for="url" class="block text-gray-700 text-sm font-bold mb-2">Entrez l'URL de la page à analyser :</label>
-                <input type="url" v-model="url" id="url" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="https://example.com" required>
-            </div>
-            <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Analyser</button>
-        </form>
-        <div v-if="loading" class="text-center mt-8">
-            <svg class="animate-spin h-8 w-8 text-blue-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-            </svg>
+<div id="app" class="container mx-auto p-8">
+    <h1 class="text-3xl font-bold text-center mb-8">Analyseur de noms de domaines</h1>
+    <p class="text-center mb-3">Cet outil capture les domaines appelés et les cookies déposés par une page web à partir de son URL.</p>
+    <p class="text-center mb-3">La capture s'effectue sans demande de consentement.</p>
+    <form @submit.prevent="analyzeUrl" class="bg-white p-6 rounded-lg shadow-md">
+        <div class="mb-4">
+            <label for="url" class="block text-gray-700 text-sm font-bold mb-2">Entrez l'URL de la page à analyser :</label>
+            <input type="url" v-model="url" id="url" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="https://example.com" required>
         </div>
-        <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-8" role="alert">
-            {{ error }}
+        <button type="submit"
+                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+            Analyser
+        </button>
+    </form>
+    <div v-if="loading" class="text-center mt-8">
+        <svg class="animate-spin h-8 w-8 text-blue-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+        </svg>
+    </div>
+    <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-8" role="alert">
+        {{ error }}
+    </div>
+    <div v-if="result" class="mt-8">
+        <h3 class="text-2xl font-semibold mb-4">Date de la capture : </h3>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            {{ new Date().toISOString().split('T')[0] }}
         </div>
-        <div v-if="result" class="mt-8">
-            <h3 class="text-2xl font-semibold mb-4">Noms de domaines capturés :</h3>
-            <ul class="bg-white p-6 rounded-lg shadow-md">
-                <li v-for="domaine in result.domaines" :key="domaine" class="border-b py-2">{{ domaine }}</li>
-            </ul>
-            <h3 class="text-2xl font-semibold mt-8 mb-4">Cookies capturés :</h3>
-            <ul class="bg-white p-6 rounded-lg shadow-md">
-                <li v-for="cookie in result.cookies" :key="cookie.name" class="border-b py-2">
-                    <strong>Nom :</strong> {{ cookie.name }}<br>
-                    <strong>Domaine :</strong> {{ cookie.domain }}<br>
-                    <strong>Valeur :</strong> <span class="truncate block overflow-hidden text-ellipsis whitespace-nowrap w-full" :title="cookie.value">{{ cookie.value }}</span>
-                </li>
-            </ul>
+
+        <h3 class="text-2xl font-semibold mt-8 mb-4">Noms de domaines capturés :
+            <button @click="copyDomainsToClipboard" class="text-gray-500 hover:text-gray-700 ml-4"><span role="img" aria-label="copy">📋</span></button>
+        </h3>
+        <ul class="bg-white p-6 rounded-lg shadow-md">
+            <li v-for="domaine in result.domaines" :key="domaine" class="border-b py-2">{{ domaine }}</li>
+        </ul>
+
+        <h3 class="text-2xl font-semibold mt-8 mb-4">Cookies capturés :
+            <button @click="copyCookiesToClipboard" class="text-gray-500 hover:text-gray-700 ml-4"><span role="img" aria-label="copy">📋</span></button>
+        </h3>
+        <div class="overflow-x-auto w-full bg-white p-6 rounded-lg shadow-md mt-4">
+            <table class="min-w-full bg-white w-full">
+                <thead>
+                <tr>
+                    <th class="py-2 px-4 border-b-2 border-gray-200 text-left">Nom</th>
+                    <th class="py-2 px-4 border-b-2 border-gray-200 text-left">Domaine</th>
+                    <th class="py-2 px-4 border-b-2 border-gray-200 text-left">Valeur</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="cookie in result.cookies" :key="cookie.name" class="border-b">
+                    <td class="py-2 px-4">{{ cookie.name }}</td>
+                    <td class="py-2 px-4">{{ cookie.domain }}</td>
+                    <td class="py-2 px-4 max-w-[200px] truncate block overflow-hidden text-ellipsis whitespace-nowrap break-words" :title="cookie.value">{{ cookie.value.substring(0, 50) }}{{ cookie.value.length > 50 ? '...' : '' }}
+                    </td>
+                </tr>
+                </tbody>
+            </table>
         </div>
     </div>
+</div>
 
-    <script>
-        new Vue({
-            el: '#app',
-            data: {
-                url: '',
-                loading: false,
-                error: null,
-                result: null
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            url: '',
+            loading: false,
+            error: null,
+            result: null
+        },
+        methods: {
+            showNotification(message, isError = false) {
+                const notification = document.createElement('div');
+                notification.textContent = message;
+                notification.className = `fixed bottom-4 right-4 py-2 px-4 rounded text-white ${isError ? 'bg-red-500' : 'bg-green-500'} shadow-md`;
+                document.body.appendChild(notification);
+                setTimeout(() => {
+                    notification.classList.add('opacity-0');
+                    setTimeout(() => document.body.removeChild(notification), 1000);
+                }, 3000);
             },
-            methods: {
-                async analyzeUrl() {
-                    this.loading = true;
-                    this.error = null;
-                    this.result = null;
-                    try {
-                        const response = await axios.post('/analyze', { url: this.url });
-                        this.result = response.data;
-                    } catch (err) {
-                        this.error = err.response ? err.response.data.detail : 'Une erreur est survenue';
-                    } finally {
-                        this.loading = false;
-                    }
+            async analyzeUrl() {
+                document.title = this.formatFilename();
+                this.loading = true;
+                this.error = null;
+                this.result = null;
+                try {
+                    const response = await axios.post('/analyze', {url: this.url});
+                    this.result = response.data;
+                } catch (err) {
+                    this.error = err.response ? err.response.data.detail : 'Une erreur est survenue';
+                } finally {
+                    this.loading = false;
                 }
+            },
+            copyDomainsToClipboard() {
+                const domainData = this.result.domaines.join('\n');
+                navigator.clipboard.writeText(domainData).then(() => {
+                    this.showNotification('Domaines copiés dans le presse-papier');
+                }).catch(err => {
+                    this.showNotification('Impossible de copier les domaines dans le presse-papier', true);
+                });
+            },
+            copyCookiesToClipboard() {
+                const cookieData = this.result.cookies.map(cookie => `${cookie.name}	${cookie.domain}	${cookie.value}`).join('\n');
+                navigator.clipboard.writeText(cookieData).then(() => {
+                    this.showNotification('Cookies copiés dans le presse-papier');
+                }).catch(err => {
+                    this.showNotification('Impossible de copier les cookies dans le presse-papier', true);
+                });
+            },
+            formatFilename() {
+                if (this.url) {
+                    const domain = this.url.replace(/https?:\/\//, '').replace(/\./g, '-');
+                    const date = new Date().toISOString().split('T')[0];
+                    return `${domain}_${date}`;
+                }
+                return 'capture_result';
             }
-        });
-    </script>
+        }
+    });
+</script>
 </body>
 </html>
