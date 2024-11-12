@@ -1,6 +1,14 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+    <style>
+        @media print {
+            .hidden-print {
+                display: none;
+            }
+        }
+    </style>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analyseur de noms de domaines</title>
@@ -10,13 +18,13 @@
 </head>
 <body class="bg-gray-100">
 <div id="app" class="container mx-auto p-8">
-    <h1 class="text-3xl font-bold text-center mb-8">Analyseur de noms de domaines</h1>
-    <p class="text-center mb-3">Cet outil capture les domaines appelés et les cookies déposés par une page web à partir de son URL.</p>
-    <p class="text-center mb-3">La capture s'effectue sans demande de consentement.</p>
-    <form @submit.prevent="analyzeUrl" class="bg-white p-6 rounded-lg shadow-md">
+    <h1 class="text-3xl font-bold text-center mb-8 hidden-print">Analyseur de noms de domaines</h1>
+    <p class="text-center mb-3 hidden-print">Cet outil capture les domaines appelés et les cookies déposés par une page web à partir de son URL.</p>
+    <p class="text-center mb-3 hidden-print">La capture s'effectue sans demande de consentement.</p>
+    <form @submit.prevent="analyzeUrls" class="bg-white p-6 rounded-lg shadow-md hidden-print">
         <div class="mb-4">
-            <label for="url" class="block text-gray-700 text-sm font-bold mb-2">Entrez l'URL de la page à analyser :</label>
-            <input type="url" v-model="url" id="url" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="https://example.com" required>
+            <label for="urls" class="block text-gray-700 text-sm font-bold mb-2">Entrez les URLs des pages à analyser (une par ligne) :</label>
+            <textarea v-model="urls" id="urls" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="https://example1.com" rows="5" required></textarea>
         </div>
         <button type="submit"
                 class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
@@ -32,40 +40,47 @@
     <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-8" role="alert">
         {{ error }}
     </div>
-    <div v-if="result" class="mt-8">
-        <h3 class="text-2xl font-semibold mb-4">Date de la capture : </h3>
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            {{ new Date().toISOString().split('T')[0] }}
-        </div>
-
-        <h3 class="text-2xl font-semibold mt-8 mb-4">Noms de domaines capturés :
-            <button @click="copyDomainsToClipboard" class="text-gray-500 hover:text-gray-700 ml-4"><span role="img" aria-label="copy">📋</span></button>
-        </h3>
-        <ul class="bg-white p-6 rounded-lg shadow-md">
-            <li v-for="domaine in result.domaines" :key="domaine" class="border-b py-2">{{ domaine }}</li>
-        </ul>
-
-        <h3 class="text-2xl font-semibold mt-8 mb-4">Cookies capturés :
-            <button @click="copyCookiesToClipboard" class="text-gray-500 hover:text-gray-700 ml-4"><span role="img" aria-label="copy">📋</span></button>
-        </h3>
-        <div class="overflow-x-auto w-full bg-white p-6 rounded-lg shadow-md mt-4">
-            <table class="min-w-full bg-white w-full">
-                <thead>
-                <tr>
-                    <th class="py-2 px-4 border-b-2 border-gray-200 text-left">Nom</th>
-                    <th class="py-2 px-4 border-b-2 border-gray-200 text-left">Domaine</th>
-                    <th class="py-2 px-4 border-b-2 border-gray-200 text-left">Valeur</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr v-for="cookie in result.cookies" :key="cookie.name" class="border-b">
-                    <td class="py-2 px-4">{{ cookie.name }}</td>
-                    <td class="py-2 px-4">{{ cookie.domain }}</td>
-                    <td class="py-2 px-4 max-w-[200px] truncate block overflow-hidden text-ellipsis whitespace-nowrap break-words" :title="cookie.value">{{ cookie.value.substring(0, 50) }}{{ cookie.value.length > 50 ? '...' : '' }}
-                    </td>
-                </tr>
-                </tbody>
-            </table>
+    <div v-if="results.length > 0" class="mt-8">
+        <div class="tabs hidden-print">
+                <button v-for="(res, index) in results" :key="index" @click="activeTab = index" class="px-4 py-2 rounded-t-md border-b-2" :class="{'border-blue-500': activeTab === index, 'border-gray-200': activeTab !== index}">{{ res.url }}</button>
+            </div>
+        <div v-for="(res, index) in results" :key="index" v-show="activeTab === index" class="mt-4">
+            <button @click="printPage(res.url)" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mb-4 hidden-print">Imprimer</button>
+            <h3 class="text-2xl font-semibold mb-4">URL analysée : </h3>
+            <div class="overflow-x-auto w-full bg-white p-6 rounded-lg shadow-md mt-4">
+                {{ res.url }}
+            </div>
+            <h3 class="text-2xl font-semibold mt-8 mb-4">Date de l'analyse :</h3>
+            <div class="overflow-x-auto w-full bg-white p-6 rounded-lg shadow-md mt-4">
+                {{ new Date().toISOString().split('T')[0] }}
+            </div>
+            <h3 class="text-2xl font-semibold mt-8 mb-4">Noms de domaines capturés :
+                <button @click="copyDomainsToClipboard(res.data.domaines)" class="text-gray-500 hover:text-gray-700 ml-4 hidden-print"><span role="img" aria-label="copy">📋</span></button>
+            </h3>
+            <ul class="bg-white p-6 rounded-lg shadow-md">
+                <li v-for="domaine in res.data.domaines" :key="domaine" class="border-b py-2">{{ domaine }}</li>
+            </ul>
+            <h3 class="text-2xl font-semibold mt-8 mb-4">Cookies capturés :
+                <button @click="copyCookiesToClipboard(res.data.cookies)" class="text-gray-500 hover:text-gray-700 ml-4 hidden-print"><span role="img" aria-label="copy">📋</span></button>
+            </h3>
+            <div class="overflow-x-auto w-full bg-white p-6 rounded-lg shadow-md mt-4">
+                <table class="min-w-full bg-white w-full">
+                    <thead>
+                    <tr>
+                        <th class="py-2 px-4 border-b-2 border-gray-200 text-left">Nom</th>
+                        <th class="py-2 px-4 border-b-2 border-gray-200 text-left">Domaine</th>
+                        <th class="py-2 px-4 border-b-2 border-gray-200 text-left">Valeur</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="cookie in res.data.cookies" :key="cookie.name" class="border-b">
+                        <td class="py-2 px-4">{{ cookie.name }}</td>
+                        <td class="py-2 px-4">{{ cookie.domain }}</td>
+                        <td class="py-2 px-4 max-w-[200px] truncate block overflow-hidden text-ellipsis whitespace-nowrap break-words" :title="cookie.value">{{ cookie.value.substring(0, 50) }}{{ cookie.value.length > 50 ? '...' : '' }}</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -74,10 +89,11 @@
     new Vue({
         el: '#app',
         data: {
-            url: '',
+            urls: '',
             loading: false,
             error: null,
-            result: null
+            results: [],
+            activeTab: 0
         },
         methods: {
             showNotification(message, isError = false) {
@@ -90,43 +106,41 @@
                     setTimeout(() => document.body.removeChild(notification), 1000);
                 }, 3000);
             },
-            async analyzeUrl() {
-                document.title = this.formatFilename();
+            async analyzeUrls() {
                 this.loading = true;
                 this.error = null;
-                this.result = null;
+                this.results = [];
+                const urlsArray = this.urls.split('\n').map(url => url.trim()).filter(url => url.length > 0);
                 try {
-                    const response = await axios.post('/analyze', {url: this.url});
-                    this.result = response.data;
+                    for (const url of urlsArray) {
+                        const response = await axios.post('/analyze', { url });
+                        this.results.push({ url, data: response.data });
+                    }
                 } catch (err) {
                     this.error = err.response ? err.response.data.detail : 'Une erreur est survenue';
                 } finally {
                     this.loading = false;
                 }
             },
-            copyDomainsToClipboard() {
-                const domainData = this.result.domaines.join('\n');
+            copyDomainsToClipboard(domains) {
+                const domainData = domains.join('\n');
                 navigator.clipboard.writeText(domainData).then(() => {
                     this.showNotification('Domaines copiés dans le presse-papier');
                 }).catch(err => {
                     this.showNotification('Impossible de copier les domaines dans le presse-papier', true);
                 });
             },
-            copyCookiesToClipboard() {
-                const cookieData = this.result.cookies.map(cookie => `${cookie.name}	${cookie.domain}	${cookie.value}`).join('\n');
+            copyCookiesToClipboard(cookies) {
+                const cookieData = cookies.map(cookie => `${cookie.name}\t${cookie.domain}\t${cookie.value}`).join('\n');
                 navigator.clipboard.writeText(cookieData).then(() => {
                     this.showNotification('Cookies copiés dans le presse-papier');
                 }).catch(err => {
                     this.showNotification('Impossible de copier les cookies dans le presse-papier', true);
                 });
             },
-            formatFilename() {
-                if (this.url) {
-                    const domain = this.url.replace(/https?:\/\//, '').replace(/\./g, '-');
-                    const date = new Date().toISOString().split('T')[0];
-                    return `${domain}_${date}`;
-                }
-                return 'capture_result';
+            printPage(url) {
+                document.title = url.replace(/https?:\/\//, '').replace(/\./g, '-') + '_' + new Date().toISOString().split('T')[0];
+                window.print();
             }
         }
     });
