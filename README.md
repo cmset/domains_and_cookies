@@ -11,6 +11,7 @@ source .venv/bin/activate
 Installer les dépendances
 ```bash
 pip install -r requirements.txt
+playwright install firefox
 ```
 
 Lancer le simulateur
