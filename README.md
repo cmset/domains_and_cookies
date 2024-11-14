@@ -16,7 +16,7 @@ playwright install firefox
 
 Lancer le simulateur
 ```bash
-python app.py
+uvicorn main:app
 ```
 
 Ouvrir un navigateur et aller à l'adresse http://localhost:8000
